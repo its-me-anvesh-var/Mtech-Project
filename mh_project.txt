@@ -1,0 +1,299 @@
+#include<math.h>
+#include<dirent.h>
+#include<iostream>
+#include<list>
+#include<algorithm>
+#include<fstream>
+#include<tuple>
+#include<time.h>
+#include<cstdlib>
+#include<string>
+using namespace std;
+
+class Solution{
+    list<int> path;
+    float cost;
+   
+    public:
+        Solution(list<int> path,float cost);
+        list<int> getPath();
+        float getCost();
+};
+
+Solution::Solution(list<int> path,float cost){
+    this->path = path;
+    this->cost = cost;
+}
+list<int> Solution::getPath(){
+   return path;
+}
+float Solution::getCost(){
+    return cost;
+}
+
+class Graph{
+   string NAME, TYPE, EDGE_WEIGHT_TYPE;
+   int v;
+   float **adj;
+   list<pair<float,float>> vertex;
+   
+   public:
+   Graph(int v,string NAME, string TYPE,string EDGE_WEIGHT_TYPE);
+   void addEdge(int v1, int v2, float weight);
+   void addVertex(float x, float y);
+   int getV();
+   list<pair<float,float>> getVertex();
+   float getAdj(int v1,int v2);
+};
+
+Graph::Graph(int v,string NAME, string TYPE,string EDGE_WEIGHT_TYPE){
+   this->v = v;
+   this->NAME = NAME;
+   this->TYPE = TYPE;
+   this->EDGE_WEIGHT_TYPE = EDGE_WEIGHT_TYPE;
+   this->adj = new float* [v];
+   for(int i = 0;i<v;i++){
+      this->adj[i] = new float[v];
+   }
+}
+
+void Graph::addEdge(int v1, int v2, float weight){
+ this->adj[v1][v2] = weight;
+}
+
+void Graph::addVertex(float x, float y){
+  vertex.push_back(make_pair(px,py));
+}
+
+int Graph::getV(){
+  return v;
+}
+
+list<pair<float,float>> Graph::getVertex(){
+  return vertex;
+}
+
+float Graph::getAdj(int v1,int v2){
+   return adj[v1][v2];
+}
+
+Graph readGraph(string filename){
+    string file1(filename);
+    ifstream in(file1);
+    if (!in.is_open()) {
+         cout << "No such file" << std::endl;
+         exit(0);
+     }
+
+     streambuf *cinbuf = std::cin.rdbuf();
+     cin.rdbuf(in.rdbuf());
+
+     string line;
+     string label;
+     string valueString;
+     string valueStringD;
+     string NAME;
+     string TYPE;
+     string EDGE_WEIGHT_TYPE;
+     int DIMENSION;
+
+     getline(cin, label,':');
+     getline(cin, valueString,' ');
+     getline(cin, NAME);
+
+     getline(cin, label,':');
+     getline(cin, valueString,' ');
+     getline(cin, TYPE);
+
+     getline(cin, label,':');
+     getline(cin, valueString,' ');
+     getline(cin, valueString);
+
+     getline(cin, label, ':');
+     getline(cin, valueString,' ');
+     getline(cin, valueStringD);
+     DIMENSION = stoi(valueStringD);
+
+     getline(cin, label,':');
+     getline(cin, valueString,' ');
+     getline(cin, EDGE_WEIGHT_TYPE);
+
+     getline(cin, valueString);
+
+     int vertex;
+     float px, py;
+
+      Graph graph(DIMENSION, NAME, TYPE, EDGE_WEIGHT_TYPE);
+
+     int counter = 0;
+     while(getline(cin, line) && counter < DIMENSION) {
+         sscanf(line.c_str(),"%d %f %f", &vertex, &px, &py);
+         graph.addVertex(px, py);
+         counter++;
+     }
+
+     int v1 = 0;
+     for(auto p1 : graph.getVertex()) {
+         int v2 = 0;
+         for(auto p2 : graph.getVertex()) {
+             if (v1 <= v2) {
+                 float p1x = p1.first;
+                 float p1y = p1.second;
+                 float p2x = p2.first;
+                 float p2y = p2.second;
+
+                 int distance = 0;
+                 if(!(p1x == p2x && p1y == p2y)) {
+                     float weight = 0;
+                     if(EDGE_WEIGHT_TYPE.compare("EUC_2D") == 0)
+                         weight = round(sqrt(pow(p1x - p2x, 2) + pow(p1y - p2y, 2)));
+                     else if(EDGE_WEIGHT_TYPE.compare("ATT") == 0) {
+                        float r = sqrt((pow(p1x - p2x, 2) + pow(p1y - p2y, 2)) / 10.0);
+                         float t = round(r);
+                         weight = t < r ? (t + 1) : t;
+                     }
+                     graph.addEdge(v1, v2, weight);
+                     graph.addEdge(v2, v1, weight);
+                 }
+             }
+             v2++;
+         }
+         v1++;
+     }
+
+    return graph;
+ }
+
+Solution heuristicNearestNeighbor(Graph graph, bool showCost) {
+     float cost = 0, adjWeight;
+     list<int> path;
+
+     int idxFirst = 0;
+     path.push_back(idxFirst);
+     int idxNext = idxFirst;
+     for(int i = 0; i < graph.getV() -1; i++) {
+         pair<int,float> min = make_pair(-1, -1);
+         for(int idxAdj = 0; idxAdj < graph.getV(); idxAdj++) {
+             adjWeight = graph.getAdj(idxNext, idxAdj);
+
+             if ((min.first == -1 || adjWeight < min.second) && idxAdj != idxFirst && !(find(path.be    gin(), path.end(), idxAdj) != path.end()))
+                 min = make_pair(idxAdj, adjWeight);
+         }
+         path.push_back(min.first);
+         idxNext = min.first;
+         cost += min.second;
+     }
+
+     path.push_back(idxFirst);
+     cost += graph.getAdj(idxNext, idxFirst);
+
+     if (showCost)
+         cout << cost << ",";
+
+     Solution solution(path, cost);
+     return solution;
+ }
+
+ Solution neighboor2OPTSWAP(Graph graph, Solution initialSolution) {
+     int i, idxAnt;
+     float cost1 = 0, cost2 = 0;
+     list<int> path = initialSolution.getPath();
+     list<int> path1, path2;
+     int v1 = rand() % graph.getV()/2 + 1;
+     int v2 = rand() % (graph.getV() - 1 - v1) + v1;
+     i = 0;
+     path.pop_back();
+     for(auto e : path) {
+         if (i < v1 || i > v2)
+             path1.push_back(e);
+         else
+             path2.push_back(e);
+         i++;
+     }
+     i = 0;
+     for(auto e : path) {
+         if (i >= v1 && i <= v2)
+             path1.push_back(e);
+         else
+             path2.push_back(e);
+         i++;
+     }
+     path.push_back(*path.begin());
+     path1.push_back(*path1.begin());
+     path2.push_back(*path2.begin());
+
+     i = 0;
+     for(auto idx : path1) {
+         if (i > 0)
+             cost1 += graph.getAdj(idxAnt, idx);
+         idxAnt = idx;
+         i++;
+     }
+     i = 0;
+
+     for(auto idx : path2) {
+         if (i > 0)
+             cost2 += graph.getAdj(idxAnt, idx);
+         idxAnt = idx;
+         i++;
+     }
+
+     Solution neighboor1(path1, cost1);
+     Solution neighboor2(path2, cost2);
+
+     if (cost1 < cost2)
+         return neighboor1;
+     return neighboor2;
+ }
+
+Solution VND(Graph graph, Solution initialSolution, int lmax) {
+     int l = 1;
+     while (l < lmax) {
+         Solution bestNeighboor = neighboor2OPTSWAP(graph, initialSolution);
+         if (bestNeighboor.getCost() < initialSolution.getCost()) {
+         initialSolution = bestNeighboor;
+             l = 1;
+         }
+         else
+             l++;
+     }
+
+     return initialSolution;
+ }
+
+ void ILS(Graph graph, int lmax, int perm1, int perm2) {
+   Solution solution = heuristicNearestNeighbor(graph, false);
+   Solution news = solution;
+     for (int i = 0; i < perm1; i++) {
+         news = VND(graph, solution, lmax);
+         if (i < perm1 - 1) {
+             for (int j = 0; j < perm2; j++) {
+                 news = neighboor2OPTSWAP(graph, news);
+         }
+         }
+         solution = news.getCost() < solution.getCost() ? news : solution;
+     }
+
+    cout << solution.getCost()<<endl;
+ }
+
+int main() {
+     int opt;
+
+         cout << "enter your option" << endl;
+         cin >> opt;
+
+         if (opt== 1) {
+             string filename = "";
+             cout << "enter file name : " <<endl;
+             cin >> filename;
+             Graph graph = readGraph(filename);
+             int lmax , perm1, perm2;
+             cin>>lmax>>perm1>>perm2;
+             ILS(graph, lmax, perm1, perm2);
+         }
+         else if(opt == 2){
+             cout<<"0";
+         }
+     return 0;
+ }
