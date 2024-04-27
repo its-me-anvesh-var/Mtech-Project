@@ -1,0 +1,10 @@
+% The new validity index -> Vwsj(c,cmax,X,V,U) = Scat(c) + Sep(c)/Sep(Cmax)
+% -----------------------------------------------------------------------
+
+function Vwsj = Vwsj(X,c,V,U,cmax,max_V,max_U)
+
+Scat_c = scat(c,X,V,U);
+Sep_c = sep(c,X,V);
+Sep_cmax = sep(cmax,X,max_V);
+
+Vwsj = Scat_c + (Sep_c / Sep_cmax);

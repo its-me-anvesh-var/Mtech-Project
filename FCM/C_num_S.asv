@@ -1,0 +1,16 @@
+% FCM-based model selection algorithm
+
+function cluster_num = C_num_S(data, options)
+
+Cmin = 2;
+n = size(data,1);
+Cmax = floor(sqrt(n));
+Vd = zeros(Cmax-Cmin,1);
+[max_center, max_U, max_obj_fcn] = fcm(data, Cmax, options);
+for i=Cmin:Cmax,
+    [center, U, obj_fcn] = fcm(data, i, options);
+    Vd(i,1) = Vwsj(data,i,center,U,Cmax,max_center);
+end
+Vd(1,1) = inf;
+[row,cloumn] = min(Vd);
+cluster_num = cloumn - 1;
